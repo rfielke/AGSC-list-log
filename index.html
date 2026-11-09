@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AGSC Surgical List Log</title>
+<meta name="description" content="Log each operating list at the end of the session. Data stays on this device.">
+<meta name="theme-color" content="#8a2d6b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="List Log">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow">AGSC · Dr Rick Fielke</div>
+    <h1>Surgical List Log</h1>
+    <p class="notice">Stored only on this phone. Enter no patient names, UR numbers or dates of birth.</p>
+    <p class="backup" id="backupNote" hidden></p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" id="t-log" aria-selected="true" data-view="log">Log</button>
+    <button type="button" role="tab" id="t-sum" aria-selected="false" data-view="sum">Summary</button>
+    <button type="button" role="tab" id="t-hist" aria-selected="false" data-view="hist">Lists</button>
+    <button type="button" role="tab" id="t-data" aria-selected="false" data-view="data">Data</button>
+  </nav>
+
+  <section class="card view" id="v-log" aria-labelledby="formTitle">
+    <div class="row between"><h2 id="formTitle">Log a list</h2><span class="small muted" id="editing"></span></div>
+    <div class="grid">
+      <label for="f-date">Date<input type="date" id="f-date"></label>
+      <label for="f-session">Session<select id="f-session"><option value="AM">AM (08–13)</option><option value="PM">PM (14–20)</option><option value="Full">Full day</option></select></label>
+      <label for="f-hosp">Hospital<select id="f-hosp"><option>CNAH</option><option>St Andrew's</option><option>Calvary Adelaide</option><option>Other</option></select></label>
+      <label for="f-type">List<select id="f-type"><option>Own</option><option>Joint · Denton</option><option>Joint · Munday robotic</option><option>Assist only · Munday</option><option>Other</option></select></label>
+    </div>
+    <div class="grid">
+      <label for="f-start">First knife to skin<span class="tin"><input type="time" id="f-start"><button type="button" class="now" data-now="f-start">Now</button></span></label>
+      <label for="f-finish">Last patient out<span class="tin"><input type="time" id="f-finish"><button type="button" class="now" data-now="f-finish">Now</button></span></label>
+      <label for="f-booked">Cases booked<input type="number" id="f-booked" min="0" max="20" inputmode="numeric"></label>
+      <label for="f-cancel">Cancelled on the day<input type="number" id="f-cancel" min="0" max="20" inputmode="numeric" value="0"></label>
+    </div>
+    <div class="grid">
+      <label for="f-creason">Cancellation reason<select id="f-creason"><option value="">None</option><option>Patient unwell</option><option>Patient no-show</option><option>Ran out of time</option><option>No bed</option><option>Equipment</option><option>Anaesthetic</option><option>Other</option></select></label>
+      <label for="f-delay">Late start cause<select id="f-delay"><option value="">On time</option><option>Patient</option><option>Anaesthetic</option><option>Theatre / nursing</option><option>Surgeon</option><option>Equipment</option><option>Previous list overran</option><option>Other</option></select></label>
+    </div>
+    <div class="stack">
+      <div class="row between"><h3>Cases</h3><button type="button" id="addCase">Add case</button></div>
+      <div id="cases" class="stack"></div>
+    </div>
+    <label for="f-notes">Notes (no patient details)<textarea id="f-notes" placeholder="Anything that affected the list"></textarea></label>
+    <div class="row">
+      <button type="button" class="primary" id="save">Save list</button>
+      <button type="button" class="ghost" id="reset">Clear</button>
+    </div>
+    <p class="status" id="status" role="status"></p>
+  </section>
+
+  <section class="view" id="v-sum" hidden aria-labelledby="sumTitle">
+    <div class="row between"><h2 id="sumTitle">Summary</h2>
+      <div class="seg" role="group" aria-label="Period"><button type="button" data-p="90" aria-pressed="false">90 d</button><button type="button" data-p="182" aria-pressed="true">6 mo</button><button type="button" data-p="365" aria-pressed="false">12 mo</button><button type="button" data-p="0" aria-pressed="false">All</button></div>
+    </div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section class="view" id="v-hist" hidden aria-labelledby="histTitle">
+    <h2 id="histTitle">Lists logged</h2>
+    <div class="lists" id="lists"></div>
+  </section>
+
+  <section class="card view" id="v-data" hidden aria-labelledby="dataTitle">
+    <h2 id="dataTitle">Export and backup</h2>
+    <p class="small">Everything lives only on this phone. Export a CSV for each 6-monthly review, and keep a backup file somewhere safe, such as iCloud Drive. Deleting the app or clearing Safari data deletes the log.</p>
+    <div class="row">
+      <button type="button" class="primary" id="csv">Export CSV</button>
+      <button type="button" id="backup">Save backup</button>
+      <label class="filebtn" for="restore">Restore backup<input type="file" id="restore" accept=".json,application/json"></label>
+    </div>
+    <p class="status" id="dataStatus" role="status"></p>
+    <p class="small muted" id="stats"></p>
+    <p class="small muted">Version <span id="ver">1.0.0</span></p>
+  </section>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
