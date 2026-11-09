@@ -1,9 +1,10 @@
 /* AGSC Surgical List Log — offline phone web app. All data stays in this browser's IndexedDB. */
 'use strict';
-const VERSION = '1.0.1';
+const VERSION = '1.1.0';
 const $ = s => document.querySelector(s);
 
-const PROCS = ['Hysterectomy, complex lap (35754)','Hysterectomy, complex lap (35753)','Hysterectomy, lap (35751)','Sacrocolpopexy (35597)','Anterior + posterior repair (35573)','Anterior repair (35570)','Posterior repair (35571)','Vault / uterine prolapse, vaginal (35568)','Vault prolapse (35595)','Midurethral sling (35599)','Severe endometriosis resection (35641)','Complicated operative lap (35632)','Operative laparoscopy (35631)','Operative laparoscopy (35637)','Adhesiolysis (30724)','Uterus removal / morcellation (35658)','Operative hysteroscopy (35633)','Diagnostic hysteroscopy (35630)','Endometrial ablation (35616)','Cystoscopy (36812)','Pudendal block (18264)','Pelvic floor Botox','Myomectomy (35649)','EUA (35500)','Other'];
+const PROCS = ['Hysterectomy, complex lap (35754)','Hysterectomy, complex lap (35753)','Hysterectomy, lap (35751)','Sacrocolpopexy (35597)','Anterior + posterior repair (35573)','Anterior repair (35570)','Posterior repair (35571)','Vault / uterine prolapse, vaginal (35568)','Vault prolapse (35595)','Midurethral sling (35599)','Severe endometriosis resection (35641)','Complicated operative lap (35632)','Operative laparoscopy (35631)','Operative laparoscopy (35637)','Adhesiolysis (30724)','Uterus removal / morcellation (35658)','Operative hysteroscopy (35633)','Diagnostic hysteroscopy (35630)','Endometrial ablation (35616)','Cystoscopy (36812)','Pudendal block (18264)','Pelvic floor Botox','Myomectomy (35649)','EUA (35500)','Caesarean section','Other'];
+const ASSIST = ['51303 (assist, higher-fee operation)','51300 (assist, lower-fee operation)','51309 (assist, series or combination)','51306 (assist, caesarean)','Not billed','Unsure'];
 const APPROACH = ['Robotic','Laparoscopic','Vaginal','Hysteroscopic','Cystoscopic','Open','Other'];
 const STAY = ['Day case','1 night','2+ nights'];
 const SCHED = {AM:['08:00','13:00'], PM:['14:00','20:00'], Full:['08:00','20:00']};
@@ -71,6 +72,11 @@ function caseEl(c = {}) {
     field('Gap capped at $3,000', sel('cap', ['No', 'Yes', 'Unsure'], c.cap || 'No')),
     field('Intra-op issue', sel('issue', ['None', 'Minor', 'Major'], c.issue || 'None')),
     field('Converted', sel('conv', ['No', 'To lap', 'To open'], c.conv || 'No')));
+  const asSel = sel('assist', ASSIST, c.assist || ASSIST[0]); const asField = field('Assist item billed', asSel);
+  g.insertBefore(asField, g.children[3]);
+  const roleSel = g.querySelector('[data-k=role]');
+  const syncRole = () => { asField.hidden = roleSel.value !== 'Assist'; asSel.disabled = asField.hidden; };
+  roleSel.addEventListener('change', syncRole); syncRole();
   d.append(h, g); $('#cases').appendChild(d); renumber();
 }
 function renumber() { [...$('#cases').children].forEach((c, i) => c.querySelector('b').textContent = 'Case ' + (i + 1)); }
@@ -87,7 +93,7 @@ function resetForm() {
 }
 function readForm() {
   const cases = [...$('#cases').children].map(el => {
-    const o = {}; el.querySelectorAll('[data-k]').forEach(i => { o[i.dataset.k] = i.dataset.k === 'mins' ? (i.value === '' ? null : Number(i.value)) : i.value.trim(); }); return o;
+    const o = {}; el.querySelectorAll('[data-k]').forEach(i => { if (i.disabled) return; o[i.dataset.k] = i.dataset.k === 'mins' ? (i.value === '' ? null : Number(i.value)) : i.value.trim(); }); return o;
   });
   return {
     date: $('#f-date').value, session: $('#f-session').value, hospital: $('#f-hosp').value, type: $('#f-type').value,
@@ -151,6 +157,7 @@ function summary() {
     ['Robotic', pct(rob, own.length), `of ${own.length} cases as surgeon`],
     ['Gap cap applied', cap, `${pct(cap, own.length)} of your cases`],
     ['Day cases', pct(day, own.length), 'of your cases'],
+    ['Cases assisted', cases.length - own.length, (() => { const as = cases.filter(c => c.role === 'Assist'), billed = as.filter(c => c.assist && /^5130/.test(c.assist)).length; return as.length ? `${billed} with an assist item billed` : ''; })()],
   ];
   $('#tiles').replaceChildren(...T.map(t => { const d = document.createElement('div'); d.className = 'tile';
     d.innerHTML = '<div class="k"></div><div class="v"></div><div class="s"></div>';
@@ -206,11 +213,11 @@ async function reload() {
 
 /* ---------- export, backup, restore ---------- */
 function toCSV() {
-  const h = ['date','session','hospital','list','first_incision','last_out','booked','cancelled','cancel_reason','late_cause','case','procedure','approach','role','other_items','skin_to_skin_min','stay','gap_capped','issue','converted','notes'];
+  const h = ['date','session','hospital','list','first_incision','last_out','booked','cancelled','cancel_reason','late_cause','case','procedure','approach','role','other_items','skin_to_skin_min','stay','gap_capped','issue','converted','assist_item','notes'];
   const q = v => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const rows = [h.join(',')];
   [...all].reverse().forEach(r => (r.cases && r.cases.length ? r.cases : [{}]).forEach((c, i) =>
-    rows.push([r.date, r.session, r.hospital, r.type, r.start, r.finish, r.booked, r.cancels, r.cancelReason, r.delay, i + 1, c.proc, c.approach, c.role, c.items, c.mins, c.stay, c.cap, c.issue, c.conv, r.notes].map(q).join(','))));
+    rows.push([r.date, r.session, r.hospital, r.type, r.start, r.finish, r.booked, r.cancels, r.cancelReason, r.delay, i + 1, c.proc, c.approach, c.role, c.items, c.mins, c.stay, c.cap, c.issue, c.conv, c.role === 'Assist' ? (c.assist || '').split(' ')[0] : '', r.notes].map(q).join(','))));
   return rows.join('\n');
 }
 async function deliver(name, text, type) {

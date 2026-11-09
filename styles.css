@@ -61,3 +61,4 @@ button:disabled{opacity:.5}
 .seg button{padding:6px 9px;font-size:.82rem}
 .seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.9rem}
+label[hidden]{display:none}
