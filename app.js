@@ -1,9 +1,10 @@
 /* AGSC Surgical List Log — offline phone web app. All data stays in this browser's IndexedDB. */
 'use strict';
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const $ = s => document.querySelector(s);
 
 const PROCS = ['Hysterectomy, complex lap (35754)','Hysterectomy, complex lap (35753)','Hysterectomy, lap (35751)','Sacrocolpopexy (35597)','Anterior + posterior repair (35573)','Anterior repair (35570)','Posterior repair (35571)','Vault / uterine prolapse, vaginal (35568)','Vault prolapse (35595)','Midurethral sling (35599)','Severe endometriosis resection (35641)','Complicated operative lap (35632)','Operative laparoscopy (35631)','Operative laparoscopy (35637)','Adhesiolysis (30724)','Uterus removal / morcellation (35658)','Operative hysteroscopy (35633)','Diagnostic hysteroscopy (35630)','Endometrial ablation (35616)','Cystoscopy (36812)','Pudendal block (18264)','Pelvic floor Botox','Myomectomy (35649)','EUA (35500)','Caesarean section','Other'];
+const COLLEAGUE = "Colleague's case (not involved)";
 const ASSIST = ['51303 (assist, higher-fee operation)','51300 (assist, lower-fee operation)','51309 (assist, series or combination)','51306 (assist, caesarean)','Not billed','Unsure'];
 const APPROACH = ['Robotic','Laparoscopic','Vaginal','Hysteroscopic','Cystoscopic','Open','Other'];
 const STAY = ['Day case','1 night','2+ nights'];
@@ -65,7 +66,7 @@ function caseEl(c = {}) {
   g.append(
     field('Main procedure', sel('proc', PROCS, c.proc || PROCS[0])),
     field('Approach', sel('approach', APPROACH, c.approach || 'Laparoscopic')),
-    field('Your role', sel('role', ['Surgeon', 'Assist'], c.role || 'Surgeon')),
+    field('Your role', sel('role', ['Surgeon', 'Assist', COLLEAGUE], c.role || 'Surgeon')),
     field('Other MBS items', items),
     field('Skin to skin (min)', m),
     field('Expected stay', sel('stay', STAY, c.stay || 'Day case')),
@@ -75,7 +76,11 @@ function caseEl(c = {}) {
   const asSel = sel('assist', ASSIST, c.assist || ASSIST[0]); const asField = field('Assist item billed', asSel);
   g.insertBefore(asField, g.children[3]);
   const roleSel = g.querySelector('[data-k=role]');
-  const syncRole = () => { asField.hidden = roleSel.value !== 'Assist'; asSel.disabled = asField.hidden; };
+  const syncRole = () => {
+    asField.hidden = roleSel.value !== 'Assist'; asSel.disabled = asField.hidden;
+    const other = roleSel.value === COLLEAGUE;
+    ['items', 'stay', 'cap', 'issue', 'conv'].forEach(k => { const i = g.querySelector(`[data-k=${k}]`); i.disabled = other; i.parentElement.hidden = other; });
+  };
   roleSel.addEventListener('change', syncRole); syncRole();
   d.append(h, g); $('#cases').appendChild(d); renumber();
 }
@@ -157,7 +162,9 @@ function summary() {
     ['Robotic', pct(rob, own.length), `of ${own.length} cases as surgeon`],
     ['Gap cap applied', cap, `${pct(cap, own.length)} of your cases`],
     ['Day cases', pct(day, own.length), 'of your cases'],
-    ['Cases assisted', cases.length - own.length, (() => { const as = cases.filter(c => c.role === 'Assist'), billed = as.filter(c => c.assist && /^5130/.test(c.assist)).length; return as.length ? `${billed} with an assist item billed` : ''; })()],
+    ['Your share of list time', (() => { let mine = 0, tot = 0; L.forEach(r => { if (!(r.start && r.finish)) return; const cs = r.cases || []; if (cs.some(c => c.mins == null)) return; tot += mins(r.finish) - mins(r.start); mine += cs.filter(c => c.role !== COLLEAGUE).reduce((a, c) => a + c.mins, 0); }); return tot ? Math.round(100 * mine / tot) + '%' : '–'; })(), 'skin-to-skin minutes of your cases ÷ list time'],
+    ["Colleagues' cases", cases.filter(c => c.role === COLLEAGUE).length, 'on your lists, not involved'],
+    ['Cases assisted', cases.filter(c => c.role === 'Assist').length, (() => { const as = cases.filter(c => c.role === 'Assist'), billed = as.filter(c => c.assist && /^5130/.test(c.assist)).length; return as.length ? `${billed} with an assist item billed` : ''; })()],
   ];
   $('#tiles').replaceChildren(...T.map(t => { const d = document.createElement('div'); d.className = 'tile';
     d.innerHTML = '<div class="k"></div><div class="v"></div><div class="s"></div>';
